@@ -1,6 +1,6 @@
 ---
 name: diagnose
-version: 3.0.0
+version: 3.1.0
 description: |
   Diagnose and fix broken pipelines, silent failures, missing data, dive
   load failures, and infrastructure issues. Triage-first — observe before
@@ -94,6 +94,33 @@ cat frontend/src/dives/manifests/{dive-id}.manifest.ts
 ```
 
 If you skip this step and get a "column does not exist" error, that's on you.
+
+---
+
+## Rule Zero-and-a-Half: Confirm Your Branch Matches Prod
+
+If you're debugging behavior observed in prod (or staging), confirm your
+checkout's code matches what's running before reading any source files.
+The user's branch may be days or weeks behind main, and you'll waste
+time diagnosing dead code.
+
+```bash
+git fetch origin main
+git log --oneline HEAD..origin/main -- {subsystem-path}/ | head
+```
+
+If main has commits to the relevant subsystem that your branch doesn't,
+your file reads are diagnosing the wrong code. Read the prod version
+instead:
+
+```bash
+git show origin/main:path/to/file.py
+# or work from an existing worktree that's on main:
+ls .claude/worktrees/
+```
+
+Skip this only when the user has explicitly said "I want to debug local
+changes" — anything else, assume prod.
 
 ---
 
@@ -424,10 +451,43 @@ Extraction produced wrong, incomplete, or truncated data.
 3. **Spot-check 3 values** from the source against the extraction output.
    Don't check totals or obvious values — check middle-of-table specifics.
 
+### Multi-stage LLM pipelines — trace every stage in Logfire
+
+If the bad output came from an LLM pipeline with more than one agent
+stage, the DB row shows ONLY the final state. An upstream agent may
+have produced something good that a downstream agent silently overwrote.
+
+Logfire is the source of truth here. Pull every `agent run` span in the
+relevant trace window and inspect each agent's actual input + structured
+output:
+
+```sql
+SELECT
+  start_timestamp,
+  attributes->>'gen_ai.agent.name' AS agent,
+  attributes->'final_result' AS output,
+  attributes->'pydantic_ai.all_messages' AS messages
+FROM records
+WHERE trace_id = '{trace_id}'
+  AND span_name = 'agent run'
+ORDER BY start_timestamp
+```
+
+Notes:
+- Use `attributes->'pydantic_ai.all_messages'` for full prompt/response.
+  The `events` field shows `<elided>` for content — that's an OTel
+  exporter detail, not real redaction.
+- Content matching scrub-list keywords (e.g. "Auth", "Secret") will
+  appear as `[Scrubbed due to '<keyword>']`; note them and move past.
+- Walk the agents in timestamp order. The bug lives at the stage where
+  a clean upstream output became a bad downstream one. Always confirm
+  *which* agent owns the bad output before editing any prompt.
+
 ### Disposition
 - Extractor bug → Invoke `/ingest` (fix extractor, dry-run with `extraction_run(test=True, code=...)`)
 - Detection missed pages → **Fix inline** (adjust detection prompt, re-run)
 - LLM truncation → **Ticket** if systemic, or split extraction into smaller chunks
+- Wrong agent stage edited → **Re-diagnose** via Logfire trace; only edit the prompt of the agent that actually produced the bad output
 
 ---
 
