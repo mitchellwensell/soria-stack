@@ -5,11 +5,14 @@ It is not a generic prompt library. It captures how the team wants agents to
 operate on Soria's data platform, dives, developer tooling, QA, promotion, and
 retrospectives.
 
-The pack supports both Claude-style skills and Codex plugin skills:
+The pack supports Claude-style skills, Codex plugin skills, and generated
+Hermes skills:
 
 - Claude-facing skills live as top-level directories such as `status/`,
   `dive/`, and `lessons/`.
 - Codex-facing wrappers live under `plugins/soria-stack/skills/`.
+- Hermes-facing wrappers are generated under `plugins/hermes/skills/` with
+  `soria-*` names to avoid collisions with bundled Hermes skills.
 - Shared behavior should be kept in sync across both surfaces when both tools
   need the lesson.
 
@@ -191,6 +194,35 @@ The installer creates symlinks like:
 It is idempotent. Rerun it after `git pull` to pick up added, removed, or moved
 skills.
 
+## Installation for Hermes
+
+Hermes reads extra skill directories from `~/.hermes/config.yaml`
+`skills.external_dirs`. The Hermes surface is generated from the Codex-facing
+wrappers and namespaced as `/soria-status`, `/soria-dive`, `/soria-plan`, etc.,
+so it does not collide with bundled Hermes skills.
+
+On the Hermes host:
+
+```bash
+git clone https://github.com/Soria-Inc/soria-stack ~/soria-stack
+cd ~/soria-stack
+./install-hermes.sh
+```
+
+`install-hermes.sh`:
+
+- regenerates `plugins/hermes/skills/*/SKILL.md`
+- adds `<repo>/plugins/hermes/skills` to Hermes `skills.external_dirs`
+- installs a user systemd timer, when available, to fast-forward this checkout
+  hourly and refresh Hermes when `origin/main` changes
+
+Generated Hermes skills are not source files. Edit the canonical
+`plugins/soria-stack/skills/<name>/SKILL.md` wrapper or the generator, then run:
+
+```bash
+python3 scripts/sync-hermes-skills.py
+```
+
 ## How Symlinks Should Work
 
 Use symlinks to expose canonical repo content to each agent runtime:
@@ -201,6 +233,9 @@ Use symlinks to expose canonical repo content to each agent runtime:
   `~/plugins/soria-stack/skills/<name>` for top-level Codex skill discovery.
 - `~/.claude/skills/<name>` should point at `soria-stack/<name>` for
   Claude-style skills.
+- Hermes should point `skills.external_dirs` at
+  `<repo>/plugins/hermes/skills`; those generated files point back to the
+  upstream wrappers in this repo.
 
 This lets `git pull` update the skill text that every symlink resolves to.
 Only rerun installers when skill directories are added, removed, renamed, or
@@ -227,6 +262,14 @@ Claude Code:
 cd ~/.claude/skills/soria-stack
 git pull --ff-only
 ./install.sh
+```
+
+Hermes:
+
+```bash
+cd ~/soria-stack
+git pull --ff-only
+./install-hermes.sh
 ```
 
 Then start a fresh agent session and run:
@@ -266,7 +309,9 @@ For each new skill:
 2. Decide the surfaces:
    - Claude-facing: `<name>/SKILL.md`
    - Codex-facing: `plugins/soria-stack/skills/<name>/SKILL.md`
-   - Both, if both agent runtimes should use it
+   - Hermes-facing: generated from the Codex wrapper by
+     `scripts/sync-hermes-skills.py`
+   - Both source surfaces, if both agent runtimes should use it
 3. Include frontmatter with `name`, `description`, and relevant metadata.
 4. Document:
    - when to use it
@@ -318,6 +363,8 @@ The `/lessons` workflow:
 - `MCP_TOOL_MAP.md` maps Soria workflows to `mcp__soria__*` tools.
 - `plugins/soria-stack/references/codex-adapter.md` explains how the Codex
   wrappers translate the canonical Claude skill pack.
+- `plugins/hermes/references/hermes-adapter.md` explains Hermes runtime naming
+  and MCP tool differences.
 
 
 ## Auto-update
@@ -342,3 +389,7 @@ commits that aren't on `origin/main`, the ff-only pull fails silently and the
 script writes the daily stamp anyway (so it doesn't retry every session).
 Resolve manually via `git status` + `git pull` when ready.
 
+`install-hermes.sh` also installs `soria-stack-hermes-sync.timer` on systemd
+hosts. The timer runs `scripts/hermes-auto-update.sh`, refuses dirty checkouts,
+pulls `origin/main` with `--ff-only`, regenerates Hermes skills, and restarts
+the Hermes gateway only when the checkout actually moved.
