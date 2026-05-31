@@ -17,6 +17,7 @@ allowed-tools:
   - Read
   - Bash
   - AskUserQuestion
+  - mcp__soria__*
 ---
 
 ## Preamble (run first)
@@ -57,10 +58,11 @@ to canonical forms — deciding whether two different strings represent the same
 concept, a historical name change, a typo, or genuinely different things.
 
 **Where this state lives:** value mappings are stored in shared Postgres,
-not in git. You author them via `mcp__soria__value_manage` (index / map /
-unmap / rename / soft-delete). Mappings apply at warehouse publish time —
-once mapped, re-running `mcp__soria__warehouse_manage(action="publish")`
-propagates the canonical values into bronze.
+not in git. You author them via `mcp__soria__value_manage` with a
+`schema_mapping_id` (index / read / auto_map / map / unmap / rename /
+soft-delete). Mappings apply at warehouse publish time — once mapped,
+re-running `mcp__soria__warehouse_manage(group_id="...", publish=True,
+force=True)` propagates canonical values into bronze.
 
 **This is semantic reasoning, not string matching.** "Drug Expense" vs "Drugs
 Expense" is a typo. "Gateway Health" vs "Highmark" is a corporate transition.
@@ -73,10 +75,12 @@ change that requires human judgment.
 
 Before mapping anything, understand the scope.
 
-For each group, check value mapping status:
+For each group, first read schema mappings and identify the categorical
+`schema_mapping_id` values that need canonicalization:
 
 ```
-mcp__soria__value_manage(action="read", group_id="{id}")
+mcp__soria__schema_mappings(group_id="{id}", read=True)
+mcp__soria__value_manage(schema_mapping_id="{schema_mapping_id}", read=True)
 ```
 
 Present a status table:
@@ -102,11 +106,18 @@ Focus on categorical columns with string values that vary across eras.
 For columns that need mapping, index the distinct values:
 
 ```
-mcp__soria__value_manage(action="index", group_id="{id}", column="metric_name")
+mcp__soria__value_manage(schema_mapping_id="{schema_mapping_id}", index=True)
 ```
 
 This extracts all unique values from the extracted files and stores them
 for mapping.
+
+Run `auto_map=True` before manual mapping to collapse obvious
+case/whitespace/punctuation variants:
+
+```
+mcp__soria__value_manage(schema_mapping_id="{schema_mapping_id}", auto_map=True, read=True)
+```
 
 ---
 
@@ -185,14 +196,12 @@ Work column by column. For each column:
 1. **Do the easy wins first** — typos, casing, encoding. These can be batched:
    ```
    mcp__soria__value_manage(
-     action="map",
-     group_id="{id}",
-     column="metric_name",
-     mappings=[
-       {"from": "Drug Expense", "to": "Drugs Expense"},
-       {"from": "EBITDA Margin", "to": "Operating EBITDA Margin"},
-       ...
-     ]
+     schema_mapping_id="{schema_mapping_id}",
+     map={
+       "{source_value_id}": "{target_value_id}",
+       "{other_source_value_id}": "{other_target_value_id}",
+     },
+     read=True,
    )
    ```
 
@@ -255,7 +264,7 @@ After all mappings are done:
    mappings are applied at publish time. If you published before mapping was
    complete, re-publish with `force=True`:
    ```
-   mcp__soria__warehouse_manage(action="publish", group_id="{id}", force=True)
+   mcp__soria__warehouse_manage(group_id="{id}", publish=True, force=True)
    ```
 3. **Sample check:** Query the warehouse with mapped values:
    ```

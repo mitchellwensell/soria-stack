@@ -16,6 +16,7 @@ allowed-tools:
   - Bash
   - Write
   - AskUserQuestion
+  - mcp__soria__*
 ---
 
 ## Preamble
@@ -102,7 +103,42 @@ Before writing code:
    - manual upload: only when human confirms the source is not scrapable.
 
 Never import `requests`, `httpx`, or `curl_cffi` in scraper code. Use
-`get_html` / `get_json`; they route through Soria's proxy/browser fallback.
+`get_html` / `get_json`; they route through Soria's fetch stack, including the
+proxy/browser fallback that raw HTTP bypasses.
+
+## Hard-To-Scrape Sites
+
+Use the built-in escalation path deliberately:
+
+1. **Start with `get_html` / `get_json`.** These wrap Soria's fetch service,
+   default browser-like headers, timeout handling, proxy routing, and browser
+   fallback. Most sites should stay here.
+2. **Add `SCRAPER_HEADERS` only for source-specific requirements** like a
+   required cookie, API token, or custom Accept header. Do not paste a full
+   browser header dump unless the site actually requires it.
+3. **Use `browser_task` for volatile dynamic pages.** It is an AI browser agent
+   that can find links or structured data without writing selectors. It does
+   not require `needs_browser=True`.
+4. **Use `needs_browser=True` + `self.page` for deterministic browser work:**
+   login-free clicks, dropdowns, tabs, form submissions, waiting on selectors,
+   or executing JavaScript in the page context. Keep selectors minimal and wait
+   for the network/DOM state you need.
+5. **Use `produce()` for virtual files.** If the site exposes data only through
+   API calls, `discover_files()` should return logical file refs and `produce()`
+   should generate stable CSV/JSON bytes.
+6. **Stop before manual upload.** Manual upload is allowed only after the human
+   confirms the source is not scrapable or is intentionally an uploaded/manual
+   source.
+
+Common failure signatures:
+
+- Tiny "PDF" or "CSV" downloads are often bot-protection/error HTML. Inspect
+  size/content and fix access instead of accepting the file.
+- Infinite scroll/API dashboards usually have JSON endpoints. Use browser
+  network inspection or `browser_task` to identify them before falling back to
+  manual browser scripting.
+- Auth/MFA portals are usually not suitable for automated scraping. Escalate to
+  manual upload or a first-party integration decision.
 
 ## Write Patterns
 

@@ -55,7 +55,7 @@ company trend lines are all broken.
 
 **Where this state lives:**
 - The `ref_company_parent_mapping` rows live in the `parent_mapping` scraper's
-  bronze table — published via `mcp__soria__warehouse_manage(action="publish")`
+  bronze table — published via `mcp__soria__warehouse_manage(group_id="...", publish=True)`
   and promoted to prod through a PR (see `/promote`)
 - dbt model changes that wire the join live as SQL files in
   `frontend/src/dives/dbt/models/intermediate/` or `models/staging/`
@@ -351,12 +351,12 @@ parent list before uploading.
    ```
 3. Schema mappings (CSV):
    ```
-   mcp__soria__schema_mappings(action="read", group_id="{id}")
-   mcp__soria__schema_mappings(action="update", group_id="{id}", mappings={...})
+   mcp__soria__schema_mappings(group_id="{id}", read=True)
+   mcp__soria__schema_mappings(group_id="{id}", update={...})
    ```
 4. Publish to warehouse with force:
    ```
-   mcp__soria__warehouse_manage(action="publish", group_id="{id}", force=True)
+   mcp__soria__warehouse_manage(group_id="{id}", publish=True, force=True)
    ```
 5. Re-run dbt for any downstream staging/intermediate that reads from
    `stg_parent_mapping` (`dbt run --select +stg_parent_mapping+`).

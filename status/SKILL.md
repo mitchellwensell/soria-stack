@@ -132,7 +132,7 @@ Two paths depending on file type:
 
 - **CSV groups:** Check schema mappings:
   ```
-  mcp__soria__schema_mappings(action="read", group_id="{id}")
+  mcp__soria__schema_mappings(group_id="{id}", read=True)
   ```
   Report how many source columns are mapped vs unmapped.
 
@@ -141,10 +141,12 @@ Two paths depending on file type:
 For groups with extracted data, check value mapping status:
 
 ```
-mcp__soria__value_manage(action="read", group_id="{id}")
+mcp__soria__schema_mappings(group_id="{id}", read=True)
+mcp__soria__value_manage(schema_mapping_id="{schema_mapping_id}", read=True)
 ```
 
-Report: which columns have canonicals, how many values are mapped vs unmapped.
+Report per mapped categorical column: which columns have canonicals, how many
+values are mapped vs unmapped.
 Flag columns with >10% unmapped values.
 
 ### Stage 7: Warehouse (staging)

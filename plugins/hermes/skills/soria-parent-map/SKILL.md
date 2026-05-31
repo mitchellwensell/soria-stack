@@ -39,6 +39,6 @@ before acting.
 - MCP-driven upload/publish flow:
   `scraper_upload_urls / scraper_confirm_uploads`,
   `schema_mappings`,
-  `warehouse_manage(action="publish")`
+  `warehouse_manage(group_id=..., publish=True)`
 - wire into dbt intermediate/marts, not into a "gold" layer
 - explicit review of ambiguous parent relationships before mutating shared data

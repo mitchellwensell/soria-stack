@@ -34,10 +34,18 @@ before acting.
 
 ## Focus
 
-- `value_manage(action="read"|"index"|"map"|"unmap"|"rename")`
+- `schema_mappings(group_id=..., read=True)` to find the
+  `schema_mapping_id` for each mapped column
+- `value_manage(schema_mapping_id=..., index=True)` to index values
+- `value_manage(schema_mapping_id=..., auto_map=True, read=True)`
+  for obvious formatting variants
+- `value_manage(schema_mapping_id=..., read=True)` to inspect
+  canonicals, unmapped values, mapped values, and suggestions
+- `value_manage(schema_mapping_id=..., map={source_id: target_id},
+  unmap=[...], rename={canonical_id: "..."}, delete_ids=[...])` for mutations
 - semantic normalization decisions with concrete evidence (typo vs rebrand
   vs methodology change vs genuinely distinct)
 - mempalace support when available for ticker, company, or domain grounding
-- re-publish bronze with `force=True` after mapping updates so mapped values
-  propagate
+- re-publish bronze with `warehouse_manage(group_id=...,
+  publish=True, force=True)` after mapping updates so mapped values propagate
 - hand off to `verify` after substantial mapping changes

@@ -72,3 +72,16 @@ class MySourceScraper(SimpleScraper):
 - no scraper-side extraction, value mapping, or warehouse writes
 - no manual upload unless the human approves or no scrapable source exists
 - if a real run times out, check workflow/file state before retrying
+
+## Hard Sites
+
+- `get_html` / `get_json` are the default because they use Soria's fetch stack,
+  including headers, proxy routing, and browser fallback.
+- `SCRAPER_HEADERS` is for source-required cookies/tokens/Accept headers, not
+  wholesale copied browser dumps.
+- `browser_task` is for volatile dynamic pages and does not require
+  `needs_browser=True`.
+- `needs_browser=True` + `self.page` is for deterministic clicks/forms/selectors
+  or JavaScript in page context.
+- `produce()` is for virtual files assembled from API responses.
+- Manual upload is a last resort after human confirmation.

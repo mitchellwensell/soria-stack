@@ -21,6 +21,6 @@ before acting.
 - MCP-driven upload/publish flow:
   `mcp__soria__scraper_upload_urls / scraper_confirm_uploads`,
   `mcp__soria__schema_mappings`,
-  `mcp__soria__warehouse_manage(action="publish")`
+  `mcp__soria__warehouse_manage(group_id=..., publish=True)`
 - wire into dbt intermediate/marts, not into a "gold" layer
 - explicit review of ambiguous parent relationships before mutating shared data

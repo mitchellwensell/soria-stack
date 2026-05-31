@@ -149,7 +149,7 @@ Pick the oldest file, the newest file, and one from mid-history. Extract those 3
 When the source has a wide table (measures as columns), extract it as-is — one row per entity with N value columns. Unpivot to long format in the dbt staging model, not in the extractor. Complex reshaping during extraction fails; simple extraction is reliable extraction.
 
 ### 4. Bronze loads raw data. Staging cleans. Intermediate joins. Marts ship.
-- **Bronze** = raw tables published by ingest into `soria_duckdb_staging`. `mcp__soria__warehouse_manage(action="publish")` is the only way rows land here. Don't hand-insert.
+- **Bronze** = raw tables published by ingest into `soria_duckdb_staging`. `mcp__soria__warehouse_manage(group_id="...", publish=True)` is the only way rows land here. Don't hand-insert.
 - **Staging** (`frontend/src/dives/dbt/models/staging/`) = explicit `CAST` on every column, unpivot wide metric columns into `metric_name`/`metric_value` rows, clean snake_case, filter invalid records. One staging model per bronze table. No joins in staging. Materialized as views.
 - **Intermediate** (`models/intermediate/`) = joins across staging models, business logic, entity resolution, temporal alignment, parent-company rollups. Materialized as views.
 - **Marts** (`models/marts/`) = dashboard-ready output. One marts model per dive. Materialized as tables. Tests via `dbt test`.

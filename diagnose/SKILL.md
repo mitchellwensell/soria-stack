@@ -172,7 +172,7 @@ type because the AI will initially believe the "OK" response.
      ")
      ```
 
-   - `mcp__soria__warehouse_manage(action="publish")` said OK → check bronze:
+   - `mcp__soria__warehouse_manage(group_id="...", publish=True)` said OK → check bronze:
      ```
      mcp__soria__warehouse_query(sql="SELECT COUNT(*) FROM soria_duckdb_staging.bronze.{table_name}")
      ```
@@ -200,7 +200,7 @@ type because the AI will initially believe the "OK" response.
      rows with `deleted_at IS NOT NULL`. If a file was soft-deleted out of
      reach, it won't appear in `database_query`. Query with
      `deleted_at IS NOT NULL` to see them.
-   - **Stale warehouse table:** `warehouse_manage(action="publish")` may have
+   - **Stale warehouse table:** `warehouse_manage(publish=True)` may have
      soft-deleted the old table record but bronze is still the old shape.
      Re-publish with `force=True`.
    - **Upstream event relay crash:** Cloudflare Durable Object event relay
@@ -284,7 +284,7 @@ multi-layer tracing.
 - Manifest filter drift → **Fix inline** (update manifest values list)
 - Extraction produced bad data → Invoke `/ingest` to fix extractor
 - Value mapping wrong → Invoke `/map`
-- Duplicate publish → **Fix inline** (`warehouse_manage(action="unpublish")`, then republish)
+- Duplicate publish → **Fix inline** (`warehouse_manage(unpublish=True)`, then republish)
 
 ---
 

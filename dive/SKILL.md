@@ -485,7 +485,7 @@ Use the staging badge for browser iteration against
 same staging inspection rendered in chat via `mcp__soria__warehouse_query`.
 
 ### Bronze sources
-- Published by `mcp__soria__warehouse_manage(action="publish")`
+- Published by `mcp__soria__warehouse_manage(group_id="...", publish=True)`
 - Schema: `soria_duckdb_staging.bronze.{table}`
 - Declared in `dbt_project.yml` sources block
 - Don't hand-insert bronze — use the ingest pipeline

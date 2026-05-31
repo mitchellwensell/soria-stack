@@ -96,7 +96,7 @@ These no longer exist. Use the MCP equivalent or a local command.
 |---|---|
 | `soria scraper run/test` | `mcp__soria__scraper_run` (`test=True` for dry-run) |
 | `soria detect / extract / validate` | `mcp__soria__detection_run` / `parse_pdf` or `parse_pdfs_bulk` / `agent_extract` for new PDF extraction, `extraction_run` for SimpleExtractor or legacy PDF, `validation_run` for legacy/force validation |
-| `soria warehouse query/publish/status` | `mcp__soria__warehouse_query` / `warehouse_manage(action="publish")` |
+| `soria warehouse query/publish/status` | `mcp__soria__warehouse_query` / `warehouse_manage(publish=True)` / `warehouse_manage(status=True)` |
 | `soria schema read/update/mappings` | `mcp__soria__schema_manage` / `schema_mappings` |
 | `soria value index/map` | `mcp__soria__value_manage` |
 | `soria db query/schema` | `mcp__soria__database_query` |

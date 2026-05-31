@@ -19,6 +19,7 @@ allowed-tools:
   - Bash
   - Write
   - AskUserQuestion
+  - mcp__soria__*
 ---
 
 ## Preamble
@@ -94,6 +95,47 @@ Choose the simplest valid path after inspecting files:
 
 Default to extracting wide. Unpivot wide metric columns in dbt staging unless
 the source is already long.
+
+## File Type Routing
+
+Do not use one generic ingestion path for every file type. Pick the route by
+source shape and by whether the file already carries usable tabular structure.
+
+| File type | First question | Normal path | Notes |
+|---|---|---|---|
+| CSV | Are headers usable and is each row already the desired grain? | `schema_manage` -> `schema_mappings` -> publish | No LLM extraction. Use `file_query(refresh_headers=True)` if headers are stale. Header drift is schema mapping, not SimpleExtractor. |
+| CSV | Are there preambles, repeated header rows, footers, wide-to-long pivots, or broken encodings? | SimpleExtractor -> `extraction_run(test=True)` -> `schema_mappings` -> publish | Keep transforms mechanical. Business cleanup belongs in value mapping/dbt. |
+| Excel/XLSX | Does post-download processing split sheets into child files already? | Inspect with `file_query(detailed=True, sheet=..., rows=...)`; use existing child CSV/Excel files when available | Use `files_reprocess(file_ids=[...])` if sheet splitting or post-download processing failed. |
+| Excel/XLSX | Are rows/sheets irregular or header rows buried? | SimpleExtractor -> `extraction_run(test=True)` -> publish | `SimpleExtractor.extract(reader)` is preferred; legacy `transform(df)` is only for old extractors. |
+| PDF | Is there table data to extract? | `parse_pdf` / `parse_pdfs_bulk` -> `agent_extract` -> spot-check -> publish | This is the default for new PDF/table work. Use child groups when detection narrows pages/tables. |
+| PDF | Is this an existing legacy pipeline? | Continue legacy `extraction_run` only for compatibility/refresh | Do not start new PDF groups on legacy extraction without recording why. |
+| JSON/TXT | Is it already structured enough for chunk/search or a generated CSV? | Usually scraper `produce()` or file chunking/search path; avoid forcing into tabular ingestion unless there is a real table grain | JSON/TXT often belong to search/analyst workflows, not bronze tabular publish. |
+| ZIP | Does it unpack into supported files? | Confirm post-download processing or use `files_reprocess`; then route extracted children by type | Do not publish ZIPs directly. |
+| Manual/uploaded files | Is there no scrapable source URL or did the human request upload? | `scraper_upload_urls` / `scraper_confirm_uploads`, then normal grouping/schema path | Manual upload is not a workaround for a fixable scraper. |
+
+## New Agent Extraction Vs Legacy Extraction
+
+Use this decision procedure before extracting any PDF/table data:
+
+1. **New group or new schema:** use the new agent path. Define schema, parse PDFs
+   to markdown with `parse_pdf` / `parse_pdfs_bulk`, then call `agent_extract`.
+2. **Existing group with markdown children and agent metadata:** use
+   `agent_extract` for refresh/re-extraction. Check `file_query` for markdown
+   children and `extraction_metadata` / `validation_metadata` on markdown/CSV
+   children.
+3. **Existing group with a default `Extractor` row:** this is a SimpleExtractor
+   group. Use `extractor_manage(read=True)` and `extraction_run`.
+4. **Existing group with CSV children but no markdown children, and prior runs
+   came from legacy PDF extraction:** treat as legacy. Use `extraction_run` only
+   for refresh/compatibility, and say this is a legacy path in the artifact.
+5. **Unclear history:** inspect `file_query(group_id=..., show_deleted=True)`,
+   `schema_manage(read=True)`, `extractor_manage(read=True)`, and pipeline
+   history. If you cannot tell, do not guess; run a one-file agent-extract sample
+   after parsing and compare it to the existing output before switching paths.
+
+Legacy is a compatibility mode, not a convenience. The fact that
+`extraction_run` still works for PDFs does not make it the right choice for new
+work.
 
 ## Gate 0: Inventory And Samples
 
@@ -299,6 +341,42 @@ Then:
    - use `/map` for actual canonical decisions unless the mapping is trivial.
 
 Stop and show summary stats before publishing.
+
+## Value Mapping
+
+Value mapping is normalization of cell contents after extraction/schema mapping,
+not a way to rename headers and not a reason to edit CSVs.
+
+Lifecycle:
+
+1. Make sure CSV headers are schema-mapped. Value mapping works per canonical
+   `schema_mapping_id`.
+2. Index observed values:
+   - `mcp__soria__value_manage(schema_mapping_id="...", index=True)`
+   - use `force=True` after re-extraction if old indexed values are stale.
+3. Collapse obvious formatting variants:
+   - `mcp__soria__value_manage(schema_mapping_id="...", auto_map=True, read=True)`
+4. Read remaining values and suggestions:
+   - `mcp__soria__value_manage(schema_mapping_id="...", read=True)`
+5. Map only values you can justify:
+   - `map={source_value_id: canonical_value_id}`
+   - `rename={canonical_id: "Clean Display Value"}` only when the canonical text
+     itself should change.
+6. Re-publish when mappings or extraction outputs changed enough for downstream
+   consumers to need refreshed bronze/value-mapping tables.
+
+Rules:
+
+- Run `/map` for non-trivial canonical decisions, especially company names,
+  plan types, state abbreviations, aggregate rows, historical names, typos, or
+  values where business meaning matters.
+- Leave ambiguous values unmapped and document the question. Silent
+  canonicalization is worse than visible gaps.
+- Bronze keeps raw extracted values; mappings are published alongside bronze
+  and applied by downstream dbt/silver models. Do not patch source CSVs or
+  warehouse rows to "fix" values.
+- Historical real-world name changes are not typos. Preserve history and handle
+  succession downstream unless the user explicitly decides otherwise.
 
 ## Gate 5: Publish Bronze
 
