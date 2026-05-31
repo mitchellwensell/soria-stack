@@ -27,14 +27,17 @@ required to restore a soft-deleted row (`mcp__soria__database_mutate` sets
 | `schema_manage` | RW | CRUD schema columns for a group (PDF extraction). |
 | `schema_mappings` | RW | Map CSV headers to canonical columns. |
 | `detection_run` | W | Gemini detects which pages match the schema (PDF). |
+| `parse_pdf` / `parse_pdfs_bulk` | W | Parse PDFs into markdown child files and chunks. Required before new `agent_extract` PDF/table extraction. |
 
 ## Extraction & validation
 
 | Tool | Read/Write | Purpose |
 |---|---|---|
 | `extractor_manage` | RW | CRUD Python extractors for Excel/CSV. |
-| `extraction_run` | W | Run extractor or Gemini PDF extraction. `test=True` to dry-run. |
-| `validation_run` | W | Gemini validates extracted CSVs against source PDFs. |
+| `agent_extract` | W | New markdown-page extraction path for PDF/table data. Returns a workflow ID; poll with `agent_status`. |
+| `agent_status` / `agent_review` | R/W | Check or respond to long-running agent workflows such as `agent_extract` and `agent_map`. |
+| `extraction_run` | W | Run SimpleExtractor for Excel/CSV, or legacy Gemini PDF extraction during migration. `test=True` dry-runs SimpleExtractor. |
+| `validation_run` | W | Legacy validation workflow for extracted CSVs against source PDFs. Agent extraction validates page CSVs inline; do not double-run by default. |
 | `prompt_manage` | RW | CRUD detection/extraction LLM prompts per group. |
 
 ## Value mapping
@@ -92,7 +95,7 @@ These no longer exist. Use the MCP equivalent or a local command.
 | Old CLI | Replacement |
 |---|---|
 | `soria scraper run/test` | `mcp__soria__scraper_run` (`test=True` for dry-run) |
-| `soria detect / extract / validate` | `mcp__soria__detection_run` / `extraction_run` / `validation_run` |
+| `soria detect / extract / validate` | `mcp__soria__detection_run` / `parse_pdf` or `parse_pdfs_bulk` / `agent_extract` for new PDF extraction, `extraction_run` for SimpleExtractor or legacy PDF, `validation_run` for legacy/force validation |
 | `soria warehouse query/publish/status` | `mcp__soria__warehouse_query` / `warehouse_manage(action="publish")` |
 | `soria schema read/update/mappings` | `mcp__soria__schema_manage` / `schema_mappings` |
 | `soria value index/map` | `mcp__soria__value_manage` |

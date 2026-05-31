@@ -78,6 +78,8 @@ def transform_description(description: str, name_map: dict[str, str]) -> str:
     description = description.replace("Codex", "Hermes")
     description = description.replace("mcp__soria__*", "Soria MCP tools")
     description = re.sub(r"\bmcp__soria__([A-Za-z0-9_]+)\b", r"\1", description)
+    description = description.replace("Soria MCP tools tools", "Soria MCP tools")
+    description = description.replace("`Soria MCP tools` tools", "`Soria MCP tools`")
     for source, target in sorted(name_map.items(), key=lambda item: len(item[0]), reverse=True):
         pattern = re.compile(
             rf"(?<![A-Za-z0-9_.-])/{re.escape(source)}(?=$|[\s`),.;:])"

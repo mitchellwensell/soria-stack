@@ -3,7 +3,7 @@ name: soria-stack
 version: 6.0.0
 description: |
   Data pipeline skills for Soria Analytics. Cognitive modes for upstream
-  pipeline work (scrape → extract → value-map → publish) and for building
+  pipeline work (scrape → parse/extract → value-map → publish) and for building
   dives (dbt marts + manifest + React component + DivesPage registration +
   rows in the shared verifications seed + methodology wired into the component).
   All skills drive the Soria platform through the `mcp__soria__*` MCP tool
@@ -11,8 +11,9 @@ description: |
   and shipped via `git push` + PR — there is no `soria` CLI.
   Soria skills: /tools (verify MCP + local stack), /env (preflight; no
   isolated envs), /status (what exists), /plan (ETVLR orchestrator),
-  /ingest (scrape + extract + publish), /map (value mapping), /parent-map
-  (centralized parent company resolution), /dive (build a dive end-to-end),
+  /scraper (write/test scrapers), /ingest (group + extract + publish),
+  /map (value mapping), /parent-map (centralized parent company resolution),
+  /dive (build a dive end-to-end),
   /preview (render a dive in chat), /verify (prove data correct),
   /dashboard-review (adversarial browser QA against dev.soriaanalytics.com),
   /diagnose (failure triage), /ticket (file structured tickets mid-session),
@@ -23,10 +24,10 @@ description: |
   /test, and /code-review for branch-local app work, dev HTTPS dive frontend
   repair, test evidence, and Soria-specific code review.
   Suggest the right skill by stage: starting a session → /tools;
-  investigating what exists → /status; planning work → /plan; building a
-  pipeline → /ingest; normalizing values → /map; resolving parent companies
-  → /parent-map; building a dive or reviewing its SQL → /dive; proving data
-  correct → /verify; testing live dive UI → /dashboard-review; something
+  investigating what exists → /status; planning work → /plan; writing scraper
+  code → /scraper; building a pipeline → /ingest; normalizing values → /map;
+  resolving parent companies → /parent-map; building a dive or reviewing its
+  SQL → /dive; proving data correct → /verify; testing live dive UI → /dashboard-review; something
   broke → /diagnose; filing a bug/feature ticket → /ticket; promoting to
   prod → /promote; news pipeline → /newsroom; reviewing recent work →
   /lessons.
@@ -69,7 +70,8 @@ Engineering skills operate inside app repo worktrees and follow that repo's
 | Sanity-checking the dev stack | `/env` |
 | Asking "what do we have for X?" | `/status` |
 | Saying "let's work on X" or "come up with a plan" | `/plan` |
-| Ready to scrape, extract, or publish | `/ingest` |
+| Writing or repairing source discovery code | `/scraper` |
+| Ready to group, extract, or publish | `/ingest` |
 | Normalizing values across eras | `/map` |
 | Resolving company names to parent companies | `/parent-map` |
 | Building a dive, writing dbt SQL, or reviewing a dive | `/dive` |
@@ -92,7 +94,8 @@ Engineering skills operate inside app repo worktrees and follow that repo's
 ```
 /tools (verify MCP reachable + local stack installed — always first)
    ↓
-/status → /plan → /ingest → /map → /dive → /verify → /promote
+/status → /plan → /scraper → /ingest → /map → /dive → /verify → /promote
+                    (skip /scraper if files already exist)
                           ↑              ↑
                    /parent-map      (verify rows live in
                    (parallel to /map) the shared seed,
@@ -114,10 +117,11 @@ building before looking.
 Every data concept follows this lifecycle:
 
 ```
-E (Extract)    → /ingest Gate 1: scrape files         (mcp__soria__scraper_run)
-T (Transform)  → /ingest Gates 2-4: group, schema,    (mcp__soria__detection_run /
-                 extract, validate                     extraction_run / validation_run /
-                                                       schema_manage / schema_mappings)
+E (Extract)    → /scraper + /ingest Gate 1: scrape    (mcp__soria__scraper_run)
+T (Transform)  → /ingest Gates 2-4: group, schema,    (schema_manage /
+                 parse/detect, extract, validate       schema_mappings /
+                                                       parse_pdf / detection_run /
+                                                       agent_extract or extraction_run)
 V (Value Map)  → /map: normalize values to canonicals (mcp__soria__value_manage)
 L (Load)       → /ingest Gate 5: publish to staging   (mcp__soria__warehouse_manage
                                                        action="publish" → soria_duckdb_staging)
@@ -130,7 +134,7 @@ R (Represent)  → /dive: dbt marts model + manifest +  (dbt run locally →
 
 ## Reversibility model
 
-All write-path skills (`/ingest`, `/map`, `/parent-map`, `/dive`,
+All write-path skills (`/scraper`, `/ingest`, `/map`, `/parent-map`, `/dive`,
 `/promote`) write directly to shared state — there are no isolated envs
 to "switch to." The safety net is:
 

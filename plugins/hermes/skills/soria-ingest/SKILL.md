@@ -1,6 +1,6 @@
 ---
 name: soria-ingest
-description: 'Soria Stack Hermes skill for ingest. Build and run Soria ingestion pipelines in Hermes. Use for scraping, grouping, schema work, extraction, validation, value-mapping handoff, refresh runs, and publishing bronze — all through `Soria MCP tools` tools. Use for Soria data pipeline, dive, verification, promotion, or engineering workflow requests that match this topic.'
+description: 'Soria Stack Hermes skill for ingest. Build and run Soria ingestion pipelines in Hermes. Use for scraping, grouping, schema work, parse/detection, new agent extraction, SimpleExtractor Excel/CSV extraction, validation/spot checks, schema/value-mapping handoff, refresh runs, and publishing bronze — all through `Soria MCP tools`. Use for Soria data pipeline, dive, verification, promotion, or engineering workflow requests that match this topic.'
 metadata:
   source_repo: https://github.com/Soria-Inc/soria-stack
   upstream_skill: plugins/soria-stack/skills/ingest/SKILL.md
@@ -34,15 +34,21 @@ before acting.
 
 ## Focus
 
-- scraper -> groups/schema -> detect/extract -> validate -> publish (bronze)
+- scraper -> groups/schema -> parse/detect -> extract/map -> publish (bronze)
 - exact MCP tools:
   `scraper_manage / scraper_run`,
   `group_manage`,
   `schema_manage / schema_mappings`,
-  `detection_run / extraction_run / validation_run`,
+  `parse_pdf / parse_pdfs_bulk`,
+  `detection_run`,
+  `agent_extract / agent_status`,
+  `extraction_run / extractor_manage` for SimpleExtractor groups,
+  `validation_run` only for legacy/force re-validation,
   `warehouse_manage(action="publish")`
-- `test=True` on scraper_run + extraction_run to dry-run inline code before
-  `scraper_manage(action="save")` commits it to shared state
+- new PDF/table work should prefer `agent_extract` over the older PDF
+  `extraction_run` path; parse PDFs to markdown first
+- `test=True` on `scraper_run` and SimpleExtractor `extraction_run` to dry-run
+  inline code before saving it to shared state
 - human review gates at each major step
 - browser inspection only when it materially helps the scrape or extract path
 
@@ -53,3 +59,5 @@ before acting.
   don't race a concurrent run.
 - Bronze lands at `soria_duckdb_staging.bronze.{table}`. Prod promotion is
   PR-gated; do not call `warehouse_promote` from here (that's `/soria-promote`).
+- Use `/soria-scraper` when source discovery/code is the hard part. Use `/soria-map` for
+  non-trivial value canonicalization.

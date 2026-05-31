@@ -104,7 +104,8 @@ Invoke skills by name, for example `/status` or `/dive`.
 | `/tools` | Verify MCP tools and local dependencies such as `uv`, `node`, `dbt`, `make`, `git`, and `gh`. |
 | `/status` | Read-only inventory for a concept, scraper, group, warehouse table, or dive. |
 | `/plan` | ETVLR planning: Extract, Transform, Value-map, Load, Represent, with verification defined before implementation. |
-| `/ingest` | Scrape, organize, detect, extract, validate, map, and publish bronze through MCP tools. |
+| `/scraper` | Write, repair, and test Soria `SimpleScraper` sources before returning to ingestion. |
+| `/ingest` | Group, schema, parse/detect, extract with agent extraction or SimpleExtractor, map, and publish bronze through MCP tools. |
 | `/map` | Normalize raw values to canonical forms with evidence. |
 | `/parent-map` | Maintain centralized parent-company mapping and ownership timelines. |
 | `/dive` | Build or revise a dive: dbt marts SQL, manifest, TSX component, `DivesPage` registration, verification rows, and methodology. |

@@ -14,6 +14,7 @@
     "soria-stack",
     "codex",
     "browser",
+    "scraper",
     "dev-dives",
     "dive",
     "data-pipeline",
@@ -38,6 +39,7 @@
     "websiteURL": "https://github.com/Soria-Inc/soria-stack",
     "defaultPrompt": [
       "Use Soria Stack to inventory what exists for this concept via the Soria MCP",
+      "Use scraper to write and test a Soria SimpleScraper for this source",
       "Use browse to verify this dive and capture evidence quickly",
       "Use dev-dives to repair dev.soriaanalytics.com frontend runtime for dive QA",
       "Use test to choose the right proof layer for this Soria code change",
